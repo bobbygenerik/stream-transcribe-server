@@ -1,0 +1,48 @@
+cmake_minimum_required(VERSION 3.10)
+project(whisper_jni)
+
+if(DEFINED ENV{WHISPER_CPP_DIR} AND NOT DEFINED WHISPER_CPP_DIR)
+    set(WHISPER_CPP_DIR $ENV{WHISPER_CPP_DIR} CACHE PATH "Path to whisper.cpp sources (from env)" FORCE)
+else()
+    set(WHISPER_CPP_DIR "@WHISPER_CPP_DIR@" CACHE PATH "Path to whisper.cpp sources")
+endif()
+
+add_library(whisper_jni SHARED src/main/cpp/whisper_jni.cpp)
+
+# If WHISPER_CPP_DIR is provided and exists, use it. Otherwise, check for a vendored
+# copy at ../whisper.cpp (relative to this module) so CI can clone it into the repo root.
+if(EXISTS "${WHISPER_CPP_DIR}")
+    message(STATUS "Using whisper.cpp at ${WHISPER_CPP_DIR}")
+    # Try to add whisper.cpp as a subdirectory. The actual target name in whisper.cpp may vary;
+    # we attempt a few common names below and fall back to the stub if none match.
+    add_subdirectory(${WHISPER_CPP_DIR} whispercpp)
+    set(WHISPER_TARGET_FOUND FALSE)
+    foreach(candidate IN ITEMS whisper whispercpp whisperlib whisper_core)
+        if(TARGET ${candidate})
+            message(STATUS "Linking whisper_jni against target: ${candidate}")
+            target_link_libraries(whisper_jni PRIVATE ${candidate})
+            set(WHISPER_TARGET_FOUND TRUE)
+            break()
+        endif()
+    endforeach()
+    if(NOT WHISPER_TARGET_FOUND)
+        message(WARNING "No known target found inside whisper.cpp. Please inspect whisper.cpp CMakeLists to determine the correct target name and update this module. Falling back to stub.")
+        add_library(whisper_stub STATIC src/main/cpp/whisper_stub.cpp)
+        target_link_libraries(whisper_jni PRIVATE whisper_stub)
+    endif()
+else()
+    set(POSSIBLE_VENDOR "${CMAKE_SOURCE_DIR}/../whisper.cpp")
+    if(EXISTS "${POSSIBLE_VENDOR}")
+        message(STATUS "WHISPER_CPP_DIR not set — using vendored whisper.cpp at ${POSSIBLE_VENDOR}")
+        set(WHISPER_CPP_DIR "${POSSIBLE_VENDOR}" CACHE PATH "Path to whisper.cpp sources" FORCE)
+        # Example: add_subdirectory(${WHISPER_CPP_DIR} whispercpp)
+        # target_link_libraries(whisper_jni PRIVATE whispercpp)
+    else()
+        message(WARNING "WHISPER_CPP_DIR not set and no vendored whisper.cpp found at ${POSSIBLE_VENDOR}. Building stub native implementation instead.")
+        add_library(whisper_stub STATIC src/main/cpp/whisper_stub.cpp)
+        target_link_libraries(whisper_jni PRIVATE whisper_stub)
+    endif()
+endif()
+
+find_library(log-lib log)
+target_link_libraries(whisper_jni ${log-lib})

@@ -1,0 +1,36 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.example.whisperexample'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.example.whisperexample'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '0.1'
+    }
+
+    buildTypes {
+        debug {}
+        release { minifyEnabled false }
+    }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.3'
+    }
+}
+
+dependencies {
+    implementation project(':whisper_android')
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.10'
+    implementation "androidx.activity:activity-compose:1.8.0"
+    implementation "androidx.compose.material3:material3:1.1.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+}
