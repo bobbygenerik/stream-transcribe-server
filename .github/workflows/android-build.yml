@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       whisper_ref:
-        description: 'whipper.cpp ref (branch, tag, or commit). Override to pin a commit/tag. Default is a pinned ref below.'
+        description: 'whisper.cpp ref (branch, tag, or commit). Override to pin a commit/tag. Default is a pinned ref below.'
         required: false
         # Default is a pinned known-good ref. Replace this with a specific tag/commit if you want stricter reproducibility.
         default: 'main'
@@ -63,7 +63,12 @@ jobs:
 
       - name: Install SDK packages
         run: |
-          yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk "platform-tools" "platforms;android-33" "ndk;25.2.9519653" "cmake;3.22.1" "build-tools;33.0.2"
+          yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk \
+            "platform-tools" \
+            "platforms;android-33" \
+            "ndk;25.2.9519653" \
+            "cmake;3.22.1" \
+            "build-tools;33.0.2"
 
       - name: Show Java/SDK versions
         run: |
@@ -76,8 +81,14 @@ jobs:
       - name: Fetch whisper.cpp sources (shallow)
         run: |
           # Determine ref: workflow input overrides repo pinned ref file
-          DEFAULT_REF=$(cat whisper_pinned_ref.txt 2>/dev/null | sed -n '1p' || echo "main")
-          REF="${{ github.event.inputs.whisper_ref || DEFAULT_REF }}"
+          DEFAULT_REF=$(sed -n '1p' whisper_pinned_ref.txt 2>/dev/null || echo "main")
+          INPUT_REF="${{ github.event.inputs.whisper_ref }}"
+          if [ -z "$INPUT_REF" ]; then
+            REF="$DEFAULT_REF"
+          else
+            REF="$INPUT_REF"
+          fi
+          echo "Using whisper.cpp ref: $REF"
           if [ ! -d "whisper.cpp" ]; then
             git clone --depth 1 --branch "$REF" https://github.com/ggerganov/whisper.cpp.git whisper.cpp || {
               echo "shallow clone of $REF failed; trying full clone"
