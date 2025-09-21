@@ -128,23 +128,17 @@ jobs:
             echo "whisper.cpp not present; continuing with stub"
           fi
 
-      - name: Build example_app APK
+      - name: Build whisper_android AAR
+        working-directory: ${{ github.workspace }}
         run: |
-          # Use project gradle wrapper if present, otherwise fall back to system gradle
-          if [ -f ./gradlew ]; then
-            chmod +x ./gradlew || true
-            echo "Using project gradlew wrapper"
-            ./gradlew :example_app:assembleDebug --no-daemon --stacktrace
-          else
-            echo "No gradlew wrapper found — installing gradle and using system gradle"
-            sudo apt-get update && sudo apt-get install -y gradle || true
-            gradle :example_app:assembleDebug --no-daemon --stacktrace
-          fi
+          # Build the library module we ship (whisper_android). Some repositories don't include
+          # the example_app module, so target the library directly to avoid "Project 'example_app' not found".
+          chmod +x ./gradlew || true
+          ./gradlew :whisper_android:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload library and APK artifacts
+      - name: Upload library AAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: whisper-android-artifacts
           path: |
-            **/example_app/build/outputs/apk/debug/*.apk
             **/whisper_android/build/outputs/aar/*.aar
